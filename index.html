@@ -18,22 +18,18 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100dvh; background: radial-gradient(ellipse at 30% 10%, #203a30, #111f1b 72%); }
 [hidden] { display: none !important; }
-.masthead { max-width: 1050px; margin: auto; padding: 24px 30px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
-.masthead div { display: flex; align-items: center; gap: 13px; }
-.brand-mark { width: 25px; aspect-ratio: 1; border-radius: 50%; background: linear-gradient(135deg,#f0e9d6 49%,#0c1412 51%); border: 1px solid #bca674; }
-h1 { margin: 0; font-size: clamp(1.3rem, 4vw, 1.85rem); letter-spacing: .11em; }
-.subtitle { color: var(--accent); font-size: .8rem; white-space: nowrap; }
-main { max-width: 1050px; margin: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(265px, 320px); gap: 35px; align-items: start; padding: 25px 30px 44px; }
+main { max-width: 1050px; margin: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(285px, 345px); gap: 22px; align-items: start; padding: 12px 16px; }
 .arena, .sidebar { min-width: 0; }
-.scoreline { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.score { display: flex; align-items: center; gap: 8px; background: #182922; border: 1px solid var(--line); padding: 8px 12px; min-height: 48px; border-radius: 9px; }
+.scoreline { display: flex; align-items: center; gap: 5px; margin-left: 15px; }
+.score { display: flex; align-items: center; gap: 5px; background: #182922; border: 1px solid var(--line); padding: 2px 6px; min-height: 26px; border-radius: 6px; font-size: .8rem; white-space: nowrap; }
 .score.active { border-color: var(--accent); }
-.score strong { font-variant-numeric: tabular-nums; margin-left: auto; font-size: 1.3rem; }
-.score small { color: var(--muted); margin-left: 3px; font-size: .72rem; }
+.score strong { font-variant-numeric: tabular-nums; font-size: .95rem; }
+.score small { color: var(--muted); font-size: .68rem; }
 .disc { display: inline-block; border-radius: 50%; aspect-ratio: 1; width: 19px; flex: none; box-shadow: 0 2px 4px #06171180; }
+.score .disc { width: 12px; }
 .disc.black { background: radial-gradient(circle at 34% 26%, #45504c, #101614 60%, #070a09); border: 1px solid #0b1210; }
 .disc.white { background: radial-gradient(circle at 33% 25%, #fffcef, #e7deca 65%, #bfb49a); border: 1px solid #eee8d7; }
-.board-wrap { display: grid; grid-template: 23px auto / 20px minmax(0,1fr); margin-top: 5px; }
+.board-wrap { display: grid; grid-template: 15px auto / 15px minmax(0,1fr); width: min(100%, max(170px, calc(100dvh - 154px))); margin-inline: auto; }
 .files, .ranks { display: grid; color: var(--muted); text-align: center; font: 12px ui-monospace, monospace; align-items: center; }
 .files { grid-area: 1 / 2; grid-template-columns: repeat(8, 1fr); }
 .ranks { grid-area: 2 / 1; grid-template-rows: repeat(8, 1fr); }
@@ -54,62 +50,63 @@ button:focus-visible, select:focus-visible, input:focus-visible + span { outline
 .grade-good { background: #90e6aa; color: #10331c; }
 .grade-ordinary { background: #ffdc83; color: #372608; }
 .grade-poor { background: #f19a8f; color: #461913; }
-.board-toolbar { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; margin: 13px 0 0 20px; }
+.board-toolbar { display: flex; align-items: center; gap: 6px; justify-content: space-between; margin: 4px 0 0 15px; }
 .status-wrap p { margin: 0; }
-#status { font-weight: 700; }
-#pass { font-size: .83rem; color: var(--accent); }
-.hint { white-space: nowrap; min-width: 109px; }
+#status { font-size: .94rem; font-weight: 700; }
+#pass { font-size: .75rem; color: var(--accent); }
+#pass:empty, .control-note:empty { display: none; }
+.hint { white-space: nowrap; min-width: 95px; padding-inline: 8px; }
 .hint[aria-pressed=true] { color: #1e241c; background: var(--accent); border-color: var(--accent); }
-.hint-detail { margin: 5px 0 0 20px; }
-.hint-legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 5px 0 0 20px; padding: 0; list-style: none; }
-.hint-legend li { border-radius: 4px; padding: 2px 8px; font-size: .75rem; font-weight: 700; }
-.retry { margin: 8px 0 0 20px; }
-.sidebar { display: grid; gap: 14px; }
-.panel { padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
-h2 { font-size: 1rem; margin: 0 0 13px; }
+.hint-legend { display: flex; flex-wrap: wrap; gap: 5px; margin: 3px 0 0 15px; padding: 0; list-style: none; }
+.hint-legend li { border-radius: 4px; padding: 1px 6px; font-size: .72rem; font-weight: 700; }
+.retry { margin: 4px 0 0 15px; }
+.sidebar, .control-group { display: grid; gap: 5px; }
+h2 { font-size: 1rem; margin: 0; }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-legend, .field-label { font-size: .83rem; color: var(--muted); padding: 0; }
-.field-label { display: block; margin: 12px 0 5px; }
-.segmented, .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.segmented { margin-top: 5px; }
+.settings-row, .segmented, .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.settings-row { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
+.control-group .actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.sidebar button, .sidebar select { font-size: .83rem; min-width: 0; padding-inline: 5px; }
 .segmented label { position: relative; }
 .segmented input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
-.segmented span { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; background: #20382e; border: 1px solid var(--line); border-radius: 8px; }
+.segmented span { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 5px; background: #20382e; border: 1px solid var(--line); border-radius: 8px; font-size: .83rem; white-space: nowrap; }
+.segmented .disc { width: 13px; }
 .segmented input:checked + span { border-color: var(--accent); color: var(--accent); }
-select, .primary, #resume { width: 100%; }
-select { padding-right: 8px; }
+select { width: 100%; text-overflow: ellipsis; }
 .muted { color: var(--muted); font-size: .78rem; line-height: 1.6; margin: 6px 0 10px; }
+.hint-detail, .control-note { font-size: .72rem; line-height: 1.35; }
+.hint-detail { margin: 1px 0 0 15px; }
+.control-note { margin: 0; }
 .primary { color: #242717; background: var(--accent); font-weight: 750; border-color: var(--accent); }
-.primary + .actions { margin-top: 8px; }
-.section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.badge { color: var(--accent); font-size: .8rem; font-variant-numeric: tabular-nums; }
-.replay-controls { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 11px; gap: 5px; }
-.replay-controls button { padding-inline: 3px; }
-#analyze, #resume { margin-top: 8px; }
+.badge { color: var(--accent); margin-left: auto; font-size: .8rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.replay-controls { display: grid; grid-template-columns: repeat(4, 42px) minmax(0, 1fr); gap: 4px; }
 #analysis-results table { width: 100%; border-collapse: collapse; font-size: .83rem; font-variant-numeric: tabular-nums; }
 #analysis-results caption { color: var(--muted); text-align: left; margin: 0 0 5px; }
-#analysis-results th, #analysis-results td { text-align: left; border-top: 1px solid var(--line); padding: 6px 3px; }
+#analysis-results th, #analysis-results td { text-align: left; border-top: 1px solid var(--line); padding: 4px 3px; }
 #analysis-results td:last-child, #analysis-results th:last-child { text-align: right; }
 .actual { color: var(--accent); }
 dialog { width: min(90%, 380px); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: inherit; padding: 18px; }
 dialog::backdrop { background: #080e0bb0; }
+.dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+#analysis-pages { margin-top: 8px; }
 @media (max-width: 730px) {
-  .masthead { padding: 16px; }
-  main { display: block; max-width: 570px; padding: 12px 10px 30px; }
-  .board-wrap { grid-template: 19px auto / 15px minmax(0,1fr); }
+  main { display: block; max-width: 520px; padding: 6px 8px; }
+  .board-wrap { width: min(100%, max(155px, calc(100dvh - 300px))); }
   .board { border-width: 3px; border-radius: 6px; }
-  .board-toolbar { margin-left: 15px; }
-  .sidebar { margin-top: 15px; }
-  .score { min-height: 42px; }
+  .sidebar { margin-top: 5px; }
+}
+@media (orientation: landscape) and (max-height: 600px) and (min-width: 520px) {
+  main { display: grid; max-width: 900px; grid-template-columns: minmax(0, 1fr) minmax(245px, 1fr); gap: 8px; padding: 5px 8px; }
+  .board-wrap { width: min(100%, max(145px, calc(100dvh - 138px))); }
 }</style>
 </head>
 <body>
-<header class="masthead"><div><span class="brand-mark" aria-hidden="true"></span><h1>白番研究室</h1></div><span class="subtitle">オセロ練習</span></header>
-<main>
+<main aria-label="白番研究室">
   <section class="arena" aria-label="オセロ盤">
     <div class="scoreline">
       <div id="black-score" class="score"><i class="disc black"></i><span>黒 <small id="black-role"></small></span><strong>2</strong></div>
       <div id="white-score" class="score"><i class="disc white"></i><span>白 <small id="white-role"></small></span><strong>2</strong></div>
+      <span id="move-count" class="badge">0手</span>
     </div>
     <div class="board-wrap">
       <div id="file-labels" class="files" aria-hidden="true"></div>
@@ -128,47 +125,58 @@ dialog::backdrop { background: #080e0bb0; }
     </ul>
     <button id="retry" class="retry" type="button" hidden>AIの着手を再試行</button>
   </section>
-  <aside class="sidebar">
-    <section class="panel" aria-labelledby="game-heading">
-      <h2 id="game-heading">対局設定</h2>
-      <fieldset><legend>あなたの色</legend><div class="segmented">
-        <label><input type="radio" name="color" value="white" checked><span><i class="disc white"></i>白番</span></label>
-        <label><input type="radio" name="color" value="black"><span><i class="disc black"></i>黒番</span></label>
-      </div></fieldset>
-      <label class="field-label" for="level">AIの強さ</label>
-      <select id="level"></select>
-      <p id="level-detail" class="muted"></p>
-      <button id="new" class="primary" type="button">新しい対局</button>
+  <aside class="sidebar" aria-label="対局と棋譜の操作">
+    <section id="game-controls" class="control-group" aria-label="対局設定">
+      <div class="settings-row">
+        <fieldset aria-label="あなたの色"><div class="segmented">
+          <label><input type="radio" name="color" value="white" checked><span><i class="disc white"></i>白番</span></label>
+          <label><input type="radio" name="color" value="black"><span><i class="disc black"></i>黒番</span></label>
+        </div></fieldset>
+        <select id="level" aria-label="AIの強さ" aria-describedby="level-detail"></select>
+      </div>
+      <p id="level-detail" class="muted control-note"></p>
       <div class="actions">
+        <button id="new" class="primary" type="button">新しい対局</button>
         <button id="undo" type="button">待った</button>
         <button id="review" type="button">振り返る</button>
       </div>
     </section>
-    <section class="panel" aria-labelledby="record-heading">
-      <div class="section-heading"><h2 id="record-heading">棋譜</h2><span id="move-count" class="badge">0手</span></div>
+    <section id="replay" class="control-group" aria-label="棋譜再生" hidden>
+      <div class="replay-controls">
+        <button id="first" type="button" aria-label="最初の局面">先頭</button>
+        <button id="prev" type="button" aria-label="前の局面">‹</button>
+        <button id="next" type="button" aria-label="次の局面">›</button>
+        <button id="last" type="button" aria-label="最後の局面">末尾</button>
+        <select id="position" aria-label="表示する局面"></select>
+      </div>
       <div class="actions">
-        <button id="save" type="button">保存</button>
-        <button id="load" type="button">読み込み</button>
-        <input id="file" type="file" accept=".json,application/json" hidden>
+        <button id="analyze" class="primary" type="button" aria-label="この局面を解析">局面解析</button>
+        <button id="analysis-view" type="button" disabled>解析結果</button>
+        <button id="resume" type="button">対局に戻る</button>
       </div>
-      <div id="replay" hidden>
-        <div class="replay-controls">
-          <button id="first" type="button" aria-label="最初の局面">先頭</button>
-          <button id="prev" type="button" aria-label="前の局面">‹</button>
-          <button id="next" type="button" aria-label="次の局面">›</button>
-          <button id="last" type="button" aria-label="最後の局面">末尾</button>
-        </div>
-        <label class="field-label" for="position">表示する局面</label>
-        <select id="position"></select>
-        <button id="analyze" class="primary" type="button">この局面を解析</button>
-        <button id="resume" type="button">対局画面に戻る</button>
-        <p id="analysis-info" class="muted" aria-live="polite"></p>
-        <div id="analysis-results"></div>
-      </div>
+      <p id="analysis-status" class="muted control-note" role="status"></p>
     </section>
+    <div class="actions file-actions">
+      <button id="save" type="button">棋譜を保存</button>
+      <button id="load" type="button">棋譜を読み込み</button>
+      <input id="file" type="file" accept=".json,application/json" hidden>
+    </div>
   </aside>
 </main>
-<dialog id="confirm"><form method="dialog"><h2>新しい対局を始めますか？</h2><p>現在の棋譜は置き換わります。</p><div class="actions"><button value="cancel" autofocus>キャンセル</button><button value="start" class="primary">始める</button></div></form></dialog>
+<dialog id="confirm"><form method="dialog"><h2>新しい対局を始めますか？</h2><p>現在の棋譜は置き換わります。</p><div class="actions dialog-actions"><button value="cancel" autofocus>キャンセル</button><button value="start" class="primary">始める</button></div></form></dialog>
+<dialog id="analysis-dialog" aria-labelledby="analysis-heading">
+  <form method="dialog" class="dialog-header">
+    <h2 id="analysis-heading">解析結果</h2>
+    <button type="submit" autofocus>閉じる</button>
+  </form>
+  <p id="analysis-info" class="muted"></p>
+  <div id="analysis-results"></div>
+  <div id="analysis-pages" class="dialog-header">
+    <button id="analysis-prev" type="button">前へ</button>
+    <span id="analysis-range" aria-live="polite"></span>
+    <button id="analysis-next" type="button">次へ</button>
+  </div>
+</dialog>
 <script id="engine-source" type="text/plain">// Board bits are row-major: A1 at bit 0 and H8 at bit 63.
 globalThis.Reversi = (() => {
   "use strict";
@@ -466,6 +474,7 @@ globalThis.Reversi = (() => {
   let hintedState = null;
   let hintResult = null;
   let report = null;
+  let analysisPage = 0;
   let matchError = "";
   let fileNotice = "";
   let fileTicket = 0;
@@ -607,10 +616,11 @@ globalThis.Reversi = (() => {
     const hintDetail = $("hint-detail");
     hintDetail.hidden = !hint || (!humanTurn && !(review && evaluation?.rows));
     $("hint-legend").hidden = !ratings.size;
-    hintDetail.textContent = evaluation?.rows ? `${colorName(state.turn)}視点 · 数字は大きいほど有利 · ${evaluation.depth}手読み。色は候補内の比較です。`
+    hintDetail.textContent = evaluation?.rows ? `${colorName(state.turn)}視点 · ${evaluation.depth}手読み · 数字が大きいほど有利`
       : evaluation?.error ? "この局面の評価を表示できませんでした。" : "候補を評価中…";
     $("move-count").textContent = game.events.filter(event => event.move !== null).length + "手";
     $("replay").hidden = !review;
+    $("game-controls").hidden = Boolean(review);
     $("review").disabled = Boolean(review) || !match.events.length;
     $("undo").disabled = Boolean(review) || !match.events.some(event => event.color === match.player && event.move !== null);
     $("save").disabled = !game.events.length;
@@ -627,13 +637,17 @@ globalThis.Reversi = (() => {
   function renderReport(state, next) {
     const info = $("analysis-info");
     const container = $("analysis-results");
+    const status = $("analysis-status");
+    $("analysis-view").disabled = !report?.rows?.length;
     container.replaceChildren();
     if (!report?.rows) {
       info.textContent = report?.error ?? (job ? "すべての合法手を同じ深さで解析中…"
         : !R.legal(state) ? "この局面に解析できる着手候補はありません。"
         : "打った手と候補手を比べるには、打つ直前の局面を選びます。");
+      status.textContent = report?.error ?? (job ? "解析中…" : "");
       return;
     }
+    status.textContent = `${colorName(state.turn)}視点 · ${report.depth}手読み · 候補${report.rows.length}手`;
     info.textContent = `${colorName(state.turn)}の視点・${report.depth}手読み（上限12手・約4秒）。` +
       (report.exact ? "全候補を終局まで探索。＋は勝ち、−は負け。" :
         "＋は手番側有利、−は相手側有利。評価点は勝率や石差とは別の尺度です。");
@@ -649,7 +663,7 @@ globalThis.Reversi = (() => {
     }
     const table = document.createElement("table");
     const caption = table.createCaption();
-    caption.textContent = "すべての合法手";
+    caption.textContent = `候補手（全${report.rows.length}手）`;
     const head = table.createTHead().insertRow();
     for (const label of ["順位", "座標", "評価"]) {
       const th = document.createElement("th");
@@ -658,17 +672,24 @@ globalThis.Reversi = (() => {
       head.append(th);
     }
     const body = table.createTBody();
-    report.rows.forEach((row, i) => {
+    const pageSize = 5;
+    const start = analysisPage * pageSize;
+    const end = Math.min(start + pageSize, report.rows.length);
+    report.rows.slice(start, end).forEach((row, i) => {
       const tr = body.insertRow();
       const played = row.move === next?.move;
       if (played) tr.className = "actual";
-      tr.insertCell().textContent = i + 1;
+      tr.insertCell().textContent = start + i + 1;
       tr.insertCell().textContent = R.coord(row.move) + (played ? " · 実戦" : "");
       tr.insertCell().textContent = Math.abs(row.value) >= 10000
         ? scoreLabel(row.value, report.exact) + "（終局）"
         : row.value === 0 && report.exact ? "引き分け" : scoreLabel(row.value);
     });
     container.append(table);
+    $("analysis-pages").hidden = report.rows.length <= pageSize;
+    $("analysis-prev").disabled = start === 0;
+    $("analysis-next").disabled = end >= report.rows.length;
+    $("analysis-range").textContent = `${start + 1}〜${end} / ${report.rows.length}`;
   }
   function cancel() {
     if (job) {
@@ -776,6 +797,7 @@ globalThis.Reversi = (() => {
     cancel();
     cursor = Math.max(0, Math.min(index, review.events.length));
     report = null;
+    analysisPage = 0;
     render();
   }
   $("hints").addEventListener("click", () => {
@@ -829,6 +851,7 @@ globalThis.Reversi = (() => {
   $("position").addEventListener("change", event => jump(Number(event.target.value)));
   $("analyze").addEventListener("click", () => {
     report = null;
+    analysisPage = 0;
     startJob(shown(), {depth: 12, time: 4000, all: true}, result => {
       report = result;
       render();
@@ -838,6 +861,13 @@ globalThis.Reversi = (() => {
     });
     render();
   });
+  $("analysis-view").addEventListener("click", () => $("analysis-dialog").showModal());
+  for (const [id, offset] of [["analysis-prev", -1], ["analysis-next", 1]]) {
+    $(id).addEventListener("click", () => {
+      analysisPage += offset;
+      renderReport(shown(), review.events[cursor]);
+    });
+  }
   $("save").addEventListener("click", () => {
     const game = review ?? match;
     const data = R.record(game.player, game.level, game.events);
