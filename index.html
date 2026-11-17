@@ -49,14 +49,16 @@ button:focus-visible, select:focus-visible, input:focus-visible + span { outline
 .cell .disc { width: 78%; pointer-events: none; }
 .cell:focus-visible { outline-offset: -3px; z-index: 1; }
 .cell.last::after { content: ""; position: absolute; width: 12%; aspect-ratio: 1; border-radius: 50%; background: #cf8c38; pointer-events: none; }
-.cell.possible::before { content: ""; position: absolute; width: 20%; aspect-ratio: 1; border-radius: 50%; background: #e8c480; box-shadow: 0 0 0 2px #172b1c55; }
-.cell.candidate::before { width: 57%; content: attr(data-rank); aspect-ratio: 1; display: grid; place-items: center; font-weight: 700; border-radius: 50%; color: #1e241c; background: var(--accent); font-size: clamp(.7rem, 2.5vw, 1rem); }
+.move-value { display: grid; place-items: center; min-width: 63%; padding: 2px 3px; border-radius: 4px; color: #192920; background: #f0e3bf; font: 700 clamp(.66rem, 2.5vw, 1.03rem)/1.2 system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+.move-value.positive { background: #cdecc6; }
+.move-value.negative { background: #ffd5ce; color: #582d27; }
 .board-toolbar { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; margin: 13px 0 0 20px; }
 .status-wrap p { margin: 0; }
 #status { font-weight: 700; }
 #pass { font-size: .83rem; color: var(--accent); }
 .hint { white-space: nowrap; min-width: 109px; }
 .hint[aria-pressed=true] { color: #1e241c; background: var(--accent); border-color: var(--accent); }
+.hint-detail { margin: 5px 0 0 20px; }
 .retry { margin: 8px 0 0 20px; }
 .sidebar { display: grid; gap: 14px; }
 .panel { padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
@@ -114,6 +116,7 @@ dialog::backdrop { background: #080e0bb0; }
       <div class="status-wrap"><p id="status" role="status"></p><p id="pass" aria-live="polite"></p></div>
       <button id="hints" class="hint" type="button" aria-pressed="true">ヒント ON</button>
     </div>
+    <p id="hint-detail" class="muted hint-detail" aria-live="polite" hidden></p>
     <button id="retry" class="retry" type="button" hidden>AIの着手を再試行</button>
   </section>
   <aside class="sidebar">
@@ -450,6 +453,9 @@ globalThis.Reversi = (() => {
   let review = null;
   let cursor = 0;
   let job = null;
+  let hintJob = null;
+  let hintedState = null;
+  let hintResult = null;
   let report = null;
   let matchError = "";
   let fileNotice = "";
@@ -463,7 +469,10 @@ globalThis.Reversi = (() => {
     const disc = document.createElement("i");
     disc.hidden = true;
     disc.setAttribute("aria-hidden", "true");
-    button.append(disc);
+    const value = document.createElement("span");
+    value.hidden = true;
+    value.setAttribute("aria-hidden", "true");
+    button.append(disc, value);
     button.addEventListener("focus", () => {
       cells[activeCell].tabIndex = -1;
       activeCell = i;
@@ -522,6 +531,13 @@ globalThis.Reversi = (() => {
     const winner = black > white ? "black" : "white";
     return `終局 · ${colorName(winner)}の勝ち（${winner === player ? "あなた" : "AI"}）`;
   }
+  const evaluationPoints = value => value / 20;
+  function scoreLabel(value, exact = false) {
+    const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+    if (Math.abs(value) >= 10000) return sign + (Math.abs(value) - 10000) + "石";
+    if (value === 0 && exact) return "0石";
+    return sign + Math.abs(evaluationPoints(value)).toFixed(1);
+  }
   function render() {
     const game = review ?? match;
     const state = shown();
@@ -532,20 +548,25 @@ globalThis.Reversi = (() => {
     const over = R.ended(state);
     const legal = R.legal(state);
     const humanTurn = !review && !over && state.turn === match.player;
-    const markers = new Map((report?.rows ?? []).slice(0, 5).map((row, i) => [row.move, i + 1]));
+    const evaluation = review ? report : state === hintedState ? hintResult : null;
+    const ratings = new Map((hint ? evaluation?.rows ?? [] : []).map(row => [row.move, row.value]));
     for (const [i, cell] of cells.entries()) {
       const bit = R.bits[i];
       const color = state.black & bit ? "black" : state.white & bit ? "white" : null;
       const possible = humanTurn && hint && Boolean(legal & bit);
-      const rank = markers.get(i);
-      const candidate = Boolean(review && hint && rank);
+      const rating = ratings.get(i);
+      const rated = rating !== undefined;
       const playable = humanTurn && !color;
-      cell.className = `cell${playable ? " playable" : ""}${possible ? " possible" : ""}${candidate ? " candidate" : ""}${lastMove === i ? " last" : ""}`;
-      cell.dataset.rank = rank ?? "";
-      cell.setAttribute("aria-label", [R.coord(i), color ? colorName(color) : "空き", possible ? "着手可能" : "", candidate ? "候補" + rank : ""].filter(Boolean).join("、"));
+      const label = rated ? scoreLabel(rating, evaluation.exact) : "";
+      cell.className = `cell${playable ? " playable" : ""}${possible ? " possible" : ""}${rated ? " rated" : ""}${lastMove === i ? " last" : ""}`;
+      cell.setAttribute("aria-label", [R.coord(i), color ? colorName(color) : "空き", possible ? "着手可能" : "", rated ? "評価 " + label : ""].filter(Boolean).join("、"));
       cell.setAttribute("aria-disabled", String(!playable));
       cell.firstElementChild.hidden = !color;
       cell.firstElementChild.className = `disc ${color ?? ""}`;
+      const value = cell.lastElementChild;
+      value.hidden = !rated;
+      value.textContent = label;
+      value.className = "move-value " + (rating > 0 ? "positive" : rating < 0 ? "negative" : "even");
     }
     for (const color of ["black", "white"]) {
       const score = $(color + "-score");
@@ -563,6 +584,10 @@ globalThis.Reversi = (() => {
         : review && !over && !legal ? colorName(state.turn) + "はパスです。「次へ」で進みます。" : "");
     $("hints").textContent = "ヒント " + (hint ? "ON" : "OFF");
     $("hints").setAttribute("aria-pressed", String(hint));
+    const hintDetail = $("hint-detail");
+    hintDetail.hidden = !hint || (!humanTurn && !(review && evaluation?.rows));
+    hintDetail.textContent = evaluation?.rows ? `${colorName(state.turn)}視点 · ＋は有利、−は不利 · ${evaluation.depth}手読み（石は終局時の差）`
+      : evaluation?.error ? "この局面の評価を表示できませんでした。" : "候補を評価中…";
     $("move-count").textContent = game.events.filter(event => event.move !== null).length + "手";
     $("replay").hidden = !review;
     $("review").disabled = Boolean(review) || !match.events.length;
@@ -598,7 +623,7 @@ globalThis.Reversi = (() => {
       const bestIsFinal = Math.abs(best) >= 10000;
       const actualIsFinal = Math.abs(actual.value) >= 10000;
       if (!bestIsFinal && !actualIsFinal && !report.exact) {
-        info.textContent += ` 実戦手と最上位の差は ${best - actual.value} 点です。`;
+        info.textContent += ` 実戦手と最上位の差は ${evaluationPoints(best - actual.value).toFixed(1)} 点です。`;
       }
     }
     const table = document.createElement("table");
@@ -618,10 +643,9 @@ globalThis.Reversi = (() => {
       if (played) tr.className = "actual";
       tr.insertCell().textContent = i + 1;
       tr.insertCell().textContent = R.coord(row.move) + (played ? " · 実戦" : "");
-      const sign = row.value > 0 ? "+" : row.value < 0 ? "−" : "";
       tr.insertCell().textContent = Math.abs(row.value) >= 10000
-        ? `${sign}${Math.abs(row.value) - 10000} 石（終局）`
-        : row.value === 0 && report.exact ? "引き分け" : sign + Math.abs(row.value);
+        ? scoreLabel(row.value, report.exact) + "（終局）"
+        : row.value === 0 && report.exact ? "引き分け" : scoreLabel(row.value);
     });
     container.append(table);
   }
@@ -631,24 +655,47 @@ globalThis.Reversi = (() => {
       job = null;
     }
   }
-  function startJob(state, options, success, failure) {
+  function startSearch(state, options, complete) {
+    let worker;
     try {
-      const worker = new Worker(workerUrl);
-      job = worker;
+      worker = new Worker(workerUrl);
       const finish = (error, result) => {
-        if (job !== worker) return;
-        cancel();
-        if (error) failure(error);
-        else success(result);
+        worker.terminate();
+        complete(error, result, worker);
       };
       worker.onmessage = ({data}) => finish(data.error, data.result);
       worker.onerror = () => finish("探索エンジンを起動できませんでした。");
       worker.onmessageerror = () => finish("探索結果を受け取れませんでした。");
       worker.postMessage({state, options});
+      return worker;
     } catch {
-      cancel();
-      failure("探索エンジンを起動できませんでした。");
+      worker?.terminate();
+      complete("探索エンジンを起動できませんでした。", null, null);
+      return null;
     }
+  }
+  function startJob(state, options, success, failure) {
+    job = startSearch(state, options, (error, result, worker) => {
+      if (job !== worker) return;
+      job = null;
+      if (error) failure(error);
+      else success(result);
+    });
+  }
+  function prepareHints() {
+    const state = stateOf(match);
+    if (hintedState === state) return;
+    hintJob?.terminate();
+    hintJob = null;
+    hintedState = state;
+    hintResult = null;
+    if (state.turn !== match.player || !R.legal(state)) return;
+    hintJob = startSearch(state, {depth: 5, time: 350, all: true}, (error, result, worker) => {
+      if (hintJob !== worker || hintedState !== state) return;
+      hintJob = null;
+      hintResult = error ? {error} : result;
+      render();
+    });
   }
   function failMatch(message) {
     matchError = message;
@@ -671,6 +718,7 @@ globalThis.Reversi = (() => {
   function settle() {
     resolvePass();
     persistMatch();
+    prepareHints();
     render();
     scheduleAI();
   }
