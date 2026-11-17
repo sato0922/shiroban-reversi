@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#132923">
+<title>白番研究室｜オセロ練習</title>
+<style>:root {
+  color-scheme: dark;
+  font-family: "Yu Gothic UI", "Hiragino Sans", system-ui, sans-serif;
+  color: #f4f0e4;
+  background: #111f1b;
+  --surface: #1a2c25;
+  --line: #3b5246;
+  --muted: #b6c8bd;
+  --accent: #e8c480;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100dvh; background: radial-gradient(ellipse at 30% 10%, #203a30, #111f1b 72%); }
+[hidden] { display: none !important; }
+.masthead { max-width: 1050px; margin: auto; padding: 24px 30px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+.masthead div { display: flex; align-items: center; gap: 13px; }
+.brand-mark { width: 25px; aspect-ratio: 1; border-radius: 50%; background: linear-gradient(135deg,#f0e9d6 49%,#0c1412 51%); border: 1px solid #bca674; }
+h1 { margin: 0; font-size: clamp(1.3rem, 4vw, 1.85rem); letter-spacing: .11em; }
+.subtitle { color: var(--accent); font-size: .8rem; white-space: nowrap; }
+main { max-width: 1050px; margin: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(265px, 320px); gap: 35px; align-items: start; padding: 25px 30px 44px; }
+.arena, .sidebar { min-width: 0; }
+.scoreline { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.score { display: flex; align-items: center; gap: 8px; background: #182922; border: 1px solid var(--line); padding: 8px 12px; min-height: 48px; border-radius: 9px; }
+.score.active { border-color: var(--accent); }
+.score strong { font-variant-numeric: tabular-nums; margin-left: auto; font-size: 1.3rem; }
+.score small { color: var(--muted); margin-left: 3px; font-size: .72rem; }
+.disc { display: inline-block; border-radius: 50%; aspect-ratio: 1; width: 19px; flex: none; box-shadow: 0 2px 4px #06171180; }
+.disc.black { background: radial-gradient(circle at 34% 26%, #45504c, #101614 60%, #070a09); border: 1px solid #0b1210; }
+.disc.white { background: radial-gradient(circle at 33% 25%, #fffcef, #e7deca 65%, #bfb49a); border: 1px solid #eee8d7; }
+.board-wrap { display: grid; grid-template: 23px auto / 20px minmax(0,1fr); margin-top: 5px; }
+.files, .ranks { display: grid; color: var(--muted); text-align: center; font: 12px ui-monospace, monospace; align-items: center; }
+.files { grid-area: 1 / 2; grid-template-columns: repeat(8, 1fr); }
+.ranks { grid-area: 2 / 1; grid-template-rows: repeat(8, 1fr); }
+.board { grid-area: 2 / 2; display: grid; grid-template: repeat(8, minmax(0, 1fr)) / repeat(8, minmax(0, 1fr)); gap: 1px; padding: 1px; aspect-ratio: 1; background: #142c23; border: 4px solid #49715c; border-radius: 9px; overflow: hidden; box-shadow: 0 9px 20px #06161080; }
+button, select { font: inherit; color: inherit; background: #20382e; border: 1px solid var(--line); border-radius: 8px; min-height: 44px; padding: 7px 12px; touch-action: manipulation; }
+button { cursor: pointer; }
+button:disabled { opacity: .45; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible + span { outline: 2px solid #ffe2a2; outline-offset: 2px; }
+.cell { border: 0; background: #296146; border-radius: 0; min-height: 0; min-width: 0; padding: 0; display: grid; place-items: center; position: relative; cursor: default; }
+.cell:nth-child(odd) { background: #2c664b; }
+.cell.playable { cursor: pointer; }
+@media (hover:hover) { .cell.playable:hover { background: #417f61; } button:not(:disabled):not(.cell):hover { filter: brightness(1.16); } }
+.cell .disc { width: 78%; pointer-events: none; }
+.cell:focus-visible { outline-offset: -3px; z-index: 1; }
+.cell.last::after { content: ""; position: absolute; width: 12%; aspect-ratio: 1; border-radius: 50%; background: #cf8c38; pointer-events: none; }
+.cell.possible::before { content: ""; position: absolute; width: 20%; aspect-ratio: 1; border-radius: 50%; background: #e8c480; box-shadow: 0 0 0 2px #172b1c55; }
+.cell.candidate::before { width: 57%; content: attr(data-rank); aspect-ratio: 1; display: grid; place-items: center; font-weight: 700; border-radius: 50%; color: #1e241c; background: var(--accent); font-size: clamp(.7rem, 2.5vw, 1rem); }
+.board-toolbar { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; margin: 13px 0 0 20px; }
+.status-wrap p { margin: 0; }
+#status { font-weight: 700; }
+#pass { font-size: .83rem; color: var(--accent); }
+.hint { white-space: nowrap; min-width: 109px; }
+.hint[aria-pressed=true] { color: #1e241c; background: var(--accent); border-color: var(--accent); }
+.retry { margin: 8px 0 0 20px; }
+.sidebar { display: grid; gap: 14px; }
+.panel { padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+h2 { font-size: 1rem; margin: 0 0 13px; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+legend, .field-label { font-size: .83rem; color: var(--muted); padding: 0; }
+.field-label { display: block; margin: 12px 0 5px; }
+.segmented, .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.segmented { margin-top: 5px; }
+.segmented label { position: relative; }
+.segmented input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.segmented span { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 7px; background: #20382e; border: 1px solid var(--line); border-radius: 8px; }
+.segmented input:checked + span { border-color: var(--accent); color: var(--accent); }
+select, .primary, #resume { width: 100%; }
+select { padding-right: 8px; }
+.muted { color: var(--muted); font-size: .78rem; line-height: 1.6; margin: 6px 0 10px; }
+.primary { color: #242717; background: var(--accent); font-weight: 750; border-color: var(--accent); }
+.primary + .actions { margin-top: 8px; }
+.section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.badge { color: var(--accent); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.replay-controls { display: grid; grid-template-columns: repeat(4, 1fr); margin-top: 11px; gap: 5px; }
+.replay-controls button { padding-inline: 3px; }
+#analyze, #resume { margin-top: 8px; }
+#analysis-results table { width: 100%; border-collapse: collapse; font-size: .83rem; font-variant-numeric: tabular-nums; }
+#analysis-results caption { color: var(--muted); text-align: left; margin: 0 0 5px; }
+#analysis-results th, #analysis-results td { text-align: left; border-top: 1px solid var(--line); padding: 6px 3px; }
+#analysis-results td:last-child, #analysis-results th:last-child { text-align: right; }
+.actual { color: var(--accent); }
+dialog { width: min(90%, 380px); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: inherit; padding: 18px; }
+dialog::backdrop { background: #080e0bb0; }
+@media (max-width: 730px) {
+  .masthead { padding: 16px; }
+  main { display: block; max-width: 570px; padding: 12px 10px 30px; }
+  .board-wrap { grid-template: 19px auto / 15px minmax(0,1fr); }
+  .board { border-width: 3px; border-radius: 6px; }
+  .board-toolbar { margin-left: 15px; }
+  .sidebar { margin-top: 15px; }
+  .score { min-height: 42px; }
+}</style>
+</head>
+<body>
+<header class="masthead"><div><span class="brand-mark" aria-hidden="true"></span><h1>白番研究室</h1></div><span class="subtitle">オセロ練習</span></header>
+<main>
+  <section class="arena" aria-label="オセロ盤">
+    <div class="scoreline">
+      <div id="black-score" class="score"><i class="disc black"></i><span>黒 <small id="black-role"></small></span><strong>2</strong></div>
+      <div id="white-score" class="score"><i class="disc white"></i><span>白 <small id="white-role"></small></span><strong>2</strong></div>
+    </div>
+    <div class="board-wrap">
+      <div id="file-labels" class="files" aria-hidden="true"></div>
+      <div id="rank-labels" class="ranks" aria-hidden="true"></div>
+      <div id="board" class="board" role="group" aria-label="盤面"></div>
+    </div>
+    <div class="board-toolbar">
+      <div class="status-wrap"><p id="status" role="status"></p><p id="pass" aria-live="polite"></p></div>
+      <button id="hints" class="hint" type="button" aria-pressed="true">ヒント ON</button>
+    </div>
+    <button id="retry" class="retry" type="button" hidden>AIの着手を再試行</button>
+  </section>
+  <aside class="sidebar">
+    <section class="panel" aria-labelledby="game-heading">
+      <h2 id="game-heading">対局設定</h2>
+      <fieldset><legend>あなたの色</legend><div class="segmented">
+        <label><input type="radio" name="color" value="white" checked><span><i class="disc white"></i>白番</span></label>
+        <label><input type="radio" name="color" value="black"><span><i class="disc black"></i>黒番</span></label>
+      </div></fieldset>
+      <label class="field-label" for="level">AIの強さ</label>
+      <select id="level"></select>
+      <p id="level-detail" class="muted"></p>
+      <button id="new" class="primary" type="button">新しい対局</button>
+      <div class="actions">
+        <button id="undo" type="button">待った</button>
+        <button id="review" type="button">振り返る</button>
+      </div>
+    </section>
+    <section class="panel" aria-labelledby="record-heading">
+      <div class="section-heading"><h2 id="record-heading">棋譜</h2><span id="move-count" class="badge">0手</span></div>
+      <div class="actions">
+        <button id="save" type="button">保存</button>
+        <button id="load" type="button">読み込み</button>
+        <input id="file" type="file" accept=".json,application/json" hidden>
+      </div>
+      <div id="replay" hidden>
+        <div class="replay-controls">
+          <button id="first" type="button" aria-label="最初の局面">先頭</button>
+          <button id="prev" type="button" aria-label="前の局面">‹</button>
+          <button id="next" type="button" aria-label="次の局面">›</button>
+          <button id="last" type="button" aria-label="最後の局面">末尾</button>
+        </div>
+        <label class="field-label" for="position">表示する局面</label>
+        <select id="position"></select>
+        <button id="analyze" class="primary" type="button">この局面を解析</button>
+        <button id="resume" type="button">対局画面に戻る</button>
+        <p id="analysis-info" class="muted" aria-live="polite"></p>
+        <div id="analysis-results"></div>
+      </div>
+    </section>
+  </aside>
+</main>
+<dialog id="confirm"><form method="dialog"><h2>新しい対局を始めますか？</h2><p>現在の棋譜は置き換わります。</p><div class="actions"><button value="cancel" autofocus>キャンセル</button><button value="start" class="primary">始める</button></div></form></dialog>
+<script id="engine-source" type="text/plain">// Board bits are row-major: A1 at bit 0 and H8 at bit 63.
+globalThis.Reversi = (() => {
+  "use strict";
+  const full = (1n << 64n) - 1n;
+  const bits = Array.from({length: 64}, (_, index) => 1n << BigInt(index));
+  const notA = 0xfefefefefefefefen;
+  const notH = 0x7f7f7f7f7f7f7f7fn;
+  const corners = [0, 7, 56, 63];
+  const cornerMask = bits[0] | bits[7] | bits[56] | bits[63];
+  const adjacentToCorners = [[1, 8, 9], [6, 15, 14], [48, 57, 49], [55, 62, 54]];
+  const weights = [
+    50,-10, 7, 4, 4, 7,-10,50,
+   -10,-20,-3,-3,-3,-3,-20,-10,
+     7, -3, 3, 1, 1, 3, -3, 7,
+     4, -3, 1, 0, 0, 1, -3, 4,
+     4, -3, 1, 0, 0, 1, -3, 4,
+     7, -3, 3, 1, 1, 3, -3, 7,
+   -10,-20,-3,-3,-3,-3,-20,-10,
+    50,-10, 7, 4, 4, 7,-10,50
+  ];
+  const directions = [
+    x => (x & notH) << 1n, x => (x & notA) >> 1n,
+    x => (x << 8n) & full, x => x >> 8n,
+    x => ((x & notH) << 9n) & full, x => (x & notA) >> 9n,
+    x => ((x & notA) << 7n) & full, x => (x & notH) >> 7n
+  ];
+  const indexByBit = new Map(bits.map((bit, index) => [bit, index]));
+  const levels = Array.from({length: 12}, (_, i) => ({
+    name: (i < 3 ? "中級" : i < 7 ? "上級" : "強豪") + " " + (i < 3 ? i + 1 : i < 7 ? i - 2 : i - 6),
+    depth: i + 5,
+    time: [160, 250, 380, 550, 750, 1000, 1350, 1800, 2400, 3200, 4300, 5800][i]
+  }));
+  const defaultLevel = 4;
+  const initial = () => ({black: bits[28] | bits[35], white: bits[27] | bits[36], turn: "black"});
+  const other = color => color === "black" ? "white" : "black";
+  const coord = index => "ABCDEFGH"[index % 8] + (Math.floor(index / 8) + 1);
+  const parseCoord = name => /^[A-H][1-8]$/.test(name) ? (Number(name[1]) - 1) * 8 + "ABCDEFGH".indexOf(name[0]) : -1;
+  function count(mask) {
+    // Count the two 32-bit halves with integer arithmetic.
+    function word(value) {
+      value -= (value >>> 1) & 0x55555555;
+      value = (value & 0x33333333) + ((value >>> 2) & 0x33333333);
+      return Math.imul((value + (value >>> 4)) & 0x0f0f0f0f, 0x01010101) >>> 24;
+    }
+    return word(Number(mask & 0xffffffffn)) + word(Number(mask >> 32n));
+  }
+  function indices(mask) {
+    const result = [];
+    while (mask) {
+      const bit = mask & -mask;
+      result.push(indexByBit.get(bit));
+      mask ^= bit;
+    }
+    return result;
+  }
+  function moveMask(player, opponent) {
+    const empty = full ^ (player | opponent);
+    let result = 0n;
+    for (const shift of directions) {
+      let line = shift(player) & opponent;
+      line |= shift(line) & opponent;
+      line |= shift(line) & opponent;
+      line |= shift(line) & opponent;
+      line |= shift(line) & opponent;
+      line |= shift(line) & opponent;
+      result |= shift(line) & empty;
+    }
+    return result;
+  }
+  function flips(bit, player, opponent) {
+    let result = 0n;
+    for (const shift of directions) {
+      let cursor = shift(bit);
+      let line = 0n;
+      while (cursor & opponent) {
+        line |= cursor;
+        cursor = shift(cursor);
+      }
+      if (cursor & player) result |= line;
+    }
+    return result;
+  }
+  const legal = state => moveMask(state[state.turn], state[other(state.turn)]);
+  const ended = state => !moveMask(state.black, state.white) && !moveMask(state.white, state.black);
+  const score = state => ({black: count(state.black), white: count(state.white)});
+  function advance(state, move) {
+    const nextTurn = other(state.turn);
+    if (move === null) {
+      if (legal(state) || !moveMask(state[nextTurn], state[state.turn])) throw Error("この局面ではパスできません。");
+      return {...state, turn: nextTurn};
+    }
+    if (!Number.isInteger(move) || move < 0 || move >= 64) throw Error("座標が無効です。");
+    const bit = bits[move];
+    const player = state[state.turn];
+    const opponent = state[nextTurn];
+    if (bit & (player | opponent)) throw Error("すでに石があります。");
+    const captured = flips(bit, player, opponent);
+    if (!captured) throw Error("石を返せない位置です。");
+    return {...state, [state.turn]: player | bit | captured, [nextTurn]: opponent ^ captured, turn: nextTurn};
+  }
+  const record = (player, level, events) => ({
+    format: "reversi-practice", version: 1, player, level,
+    moves: events.map(event => event.move === null ? "pass" : coord(event.move))
+  });
+  function replay(data) {
+    if (data?.format !== "reversi-practice" || data.version !== 1 ||
+        !["white", "black"].includes(data.player) || !Number.isInteger(data.level) ||
+        !levels[data.level] || !Array.isArray(data.moves) || data.moves.length > 120) {
+      throw Error("白番研究室の棋譜ファイルを選んでください。");
+    }
+    const states = [initial()];
+    const events = [];
+    for (const [index, token] of data.moves.entries()) {
+      const state = states.at(-1);
+      const move = token === "pass" ? null : typeof token === "string" ? parseCoord(token) : -1;
+      try {
+        states.push(advance(state, move));
+      } catch (error) {
+        throw Error(`${index + 1}手目の記録に誤りがあります（${error.message}）`);
+      }
+      events.push({move, color: state.turn});
+    }
+    const last = states.at(-1);
+    if (!legal(last) && !ended(last)) throw Error("棋譜の末尾に必要なパスがありません。");
+    return {states, events, player: data.player, level: data.level};
+  }
+  function touching(mask) {
+    const lateral = ((mask & notH) << 1n) | ((mask & notA) >> 1n);
+    const band = mask | lateral;
+    return (lateral | (band << 8n) | (band >> 8n)) & full;
+  }
+  function stableEdges(player) {
+    let stable = 0n;
+    for (let i = 0; i < corners.length; i++) {
+      const corner = corners[i];
+      if (!(player & bits[corner])) continue;
+      stable |= bits[corner];
+      const steps = [i % 2 ? -1 : 1, i < 2 ? 8 : -8];
+      for (const step of steps) {
+        for (let j = 1; j < 8; j++) {
+          const bit = bits[corner + j * step];
+          if (!(player & bit)) break;
+          stable |= bit;
+        }
+      }
+    }
+    return count(stable);
+  }
+  function evaluate(player, opponent, moves, replies, emptyCount) {
+    const empty = full ^ (player | opponent);
+    const frontier = touching(empty);
+    const mobility = count(moves) - count(replies);
+    const potential = count(touching(opponent) & empty) - count(touching(player) & empty);
+    const frontierDelta = count(opponent & frontier) - count(player & frontier);
+    const cornerDelta = count(player & cornerMask) - count(opponent & cornerMask);
+    const stability = stableEdges(player) - stableEdges(opponent);
+    let exposed = 0;
+    corners.forEach((corner, i) => {
+      if (!(empty & bits[corner])) return;
+      adjacentToCorners[i].forEach((index, j) => {
+        const penalty = j === 2 ? 23 : 11;
+        if (opponent & bits[index]) exposed += penalty;
+        if (player & bits[index]) exposed -= penalty;
+      });
+    });
+    const material = count(player) - count(opponent);
+    const materialWeight = emptyCount > 40 ? -2 : emptyCount > 18 ? 0 : emptyCount > 9 ? 3 : 8;
+    return mobility * 13 + potential * 3 + frontierDelta * 6 + cornerDelta * 65 +
+      stability * 17 + exposed + material * materialWeight;
+  }
+  function finalValue(player, opponent) {
+    const margin = count(player) - count(opponent);
+    return margin === 0 ? 0 : Math.sign(margin) * (10000 + Math.abs(margin));
+  }
+  function search(state, options) {
+    const limit = Math.min(60, Math.max(1, options.depth));
+    const player = state[state.turn];
+    const opponent = state[other(state.turn)];
+    const rootMoves = indices(moveMask(player, opponent));
+    if (!rootMoves.length) return {rows: [], depth: 0, exact: false};
+    const empty = 64 - count(player | opponent);
+    const target = Math.min(limit, empty);
+    const deadline = performance.now() + options.time;
+    const timeout = {};
+    const table = new Map();
+    let nodes = 0;
+    function ordered(mask, p, o, preferred) {
+      return indices(mask).map(move => {
+        const bit = bits[move];
+        const captured = flips(bit, p, o);
+        const nextPlayer = p | bit | captured;
+        const nextOpponent = o ^ captured;
+        return {move, p: nextPlayer, o: nextOpponent,
+          priority: (move === preferred ? 1000 : 0) + weights[move] - count(moveMask(nextOpponent, nextPlayer)) * 3};
+      }).sort((a, b) => b.priority - a.priority);
+    }
+    function negamax(p, o, depth, alpha, beta, vacancies) {
+      if (++nodes % 128 === 0 && performance.now() >= deadline) throw timeout;
+      const moves = moveMask(p, o);
+      if (!moves) {
+        if (!moveMask(o, p)) return finalValue(p, o);
+        return -negamax(o, p, depth, -beta, -alpha, vacancies);
+      }
+      if (!depth) return evaluate(p, o, moves, moveMask(o, p), vacancies);
+      const key = (p << 64n) | o;
+      const memo = table.get(key);
+      if (memo?.depth === depth &&
+          (memo.bound === "exact" || (memo.bound === "lower" && memo.value >= beta) ||
+           (memo.bound === "upper" && memo.value <= alpha))) return memo.value;
+      const originalAlpha = alpha;
+      let best = -Infinity;
+      let preferred = -1;
+      for (const entry of ordered(moves, p, o, memo?.move)) {
+        const value = -negamax(entry.o, entry.p, depth - 1, -beta, -alpha, vacancies - 1);
+        if (value > best) {
+          best = value;
+          preferred = entry.move;
+        }
+        alpha = Math.max(alpha, value);
+        if (alpha >= beta) break;
+      }
+      if (table.size < 200000 || memo) table.set(key, {depth, value: best, move: preferred,
+        bound: best <= originalAlpha ? "upper" : best >= beta ? "lower" : "exact"});
+      return best;
+    }
+    let rows = rootMoves.map(move => ({move, value: 0}));
+    let completed = 0;
+    for (let depth = 1; depth <= target; depth++) {
+      try {
+        const next = [];
+        let alpha = -Infinity;
+        for (const row of rows) {
+          const bit = bits[row.move];
+          const captured = flips(bit, player, opponent);
+          const p = player | bit | captured;
+          const o = opponent ^ captured;
+          const value = -negamax(o, p, depth - 1, -Infinity, options.all ? Infinity : -alpha, empty - 1);
+          next.push({move: row.move, value: value || 0});
+          alpha = Math.max(alpha, value);
+        }
+        rows = next.sort((a, b) => b.value - a.value);
+        completed = depth;
+        if (performance.now() >= deadline) break;
+      } catch (error) {
+        if (error !== timeout) throw error;
+        break;
+      }
+    }
+    if (!completed) throw Error("探索を完了できませんでした。もう一度お試しください。");
+    return {rows: options.all ? rows : rows.slice(0, 1), depth: completed, exact: completed === empty};
+  }
+  return {bits, levels, defaultLevel, initial, coord, parseCoord, indices, legal, ended, other, score, advance, record, replay, search};
+})();</script>
+<script id="worker-source" type="text/plain">self.onmessage = ({data}) => {
+  try {
+    self.postMessage({result: Reversi.search(data.state, data.options)});
+  } catch (error) {
+    self.postMessage({error: error.message});
+  }
+};</script>
+<script>(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const getText = id => $(id).textContent;
+  const engineSource = getText("engine-source");
+  const engineScript = document.createElement("script");
+  engineScript.textContent = engineSource;
+  document.head.append(engineScript);
+  const R = Reversi;
+  const workerUrl = URL.createObjectURL(new Blob([engineSource, getText("worker-source")], {type: "text/javascript"}));
+  const levelSelect = $("level");
+  const savedKey = "shiroban-practice-match-v1";
+  const hintsKey = "shiroban-practice-hints-v1";
+  const colorName = color => color === "black" ? "黒" : "白";
+  const eventName = event => colorName(event.color) + (event.move === null ? " パス" : " " + R.coord(event.move));
+  const fresh = (player, level) => ({states: [R.initial()], events: [], player, level});
+  const stateOf = game => game.states.at(-1);
+  const option = (text, value) => new Option(text, value);
+  function fromStorage(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+  }
+  function intoStorage(key, value) {
+    try { localStorage.setItem(key, value); } catch { /* File export still works. */ }
+  }
+  let match = fresh("white", R.defaultLevel);
+  const saved = fromStorage(savedKey);
+  if (saved) {
+    try { match = R.replay(JSON.parse(saved)); } catch { /* Start from a clean opening. */ }
+  }
+  let hint = fromStorage(hintsKey) !== "off";
+  let review = null;
+  let cursor = 0;
+  let job = null;
+  let report = null;
+  let matchError = "";
+  let fileNotice = "";
+  let fileTicket = 0;
+  let activeCell = 0;
+  const cells = R.bits.map((_, i) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "cell";
+    button.tabIndex = i === 0 ? 0 : -1;
+    const disc = document.createElement("i");
+    disc.hidden = true;
+    disc.setAttribute("aria-hidden", "true");
+    button.append(disc);
+    button.addEventListener("focus", () => {
+      cells[activeCell].tabIndex = -1;
+      activeCell = i;
+      button.tabIndex = 0;
+    });
+    button.addEventListener("click", () => play(i));
+    return button;
+  });
+  $("board").append(...cells);
+  $("board").addEventListener("keydown", event => {
+    const deltas = {ArrowLeft: -1, ArrowRight: 1, ArrowUp: -8, ArrowDown: 8};
+    const delta = deltas[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    const next = activeCell + delta;
+    if (next >= 0 && next < 64 && (Math.abs(delta) === 8 || (next >> 3) === (activeCell >> 3))) {
+      cells[next].focus();
+    }
+  });
+  for (let i = 0; i < 8; i++) {
+    const file = document.createElement("span");
+    file.textContent = "ABCDEFGH"[i];
+    $("file-labels").append(file);
+    const rank = document.createElement("span");
+    rank.textContent = i + 1;
+    $("rank-labels").append(rank);
+  }
+  R.levels.forEach((level, i) => levelSelect.add(option(level.name, i)));
+  function syncSettings() {
+    document.querySelector(`input[name="color"][value="${match.player}"]`).checked = true;
+    levelSelect.value = match.level;
+    describeLevel();
+  }
+  function describeLevel() {
+    const level = R.levels[Number(levelSelect.value)];
+    $("level-detail").textContent = `次の対局に適用 · 最大 ${level.depth} 手読み · 1手 約 ${level.time / 1000} 秒まで`;
+  }
+  function persistMatch() {
+    intoStorage(savedKey, JSON.stringify(R.record(match.player, match.level, match.events)));
+  }
+  function shown() {
+    return review ? review.states[cursor] : stateOf(match);
+  }
+  function append(move) {
+    const state = stateOf(match);
+    const next = R.advance(state, move);
+    match.events.push({move, color: state.turn});
+    match.states.push(next);
+  }
+  function resolvePass() {
+    const state = stateOf(match);
+    if (!R.legal(state) && !R.ended(state)) append(null);
+  }
+  function outcome({black, white}, player) {
+    if (black === white) return "終局 · 引き分け";
+    const winner = black > white ? "black" : "white";
+    return `終局 · ${colorName(winner)}の勝ち（${winner === player ? "あなた" : "AI"}）`;
+  }
+  function render() {
+    const game = review ?? match;
+    const state = shown();
+    const current = review ? cursor : match.events.length;
+    const prior = game.events[current - 1];
+    const lastMove = prior?.move === null ? game.events[current - 2]?.move : prior?.move;
+    const points = R.score(state);
+    const over = R.ended(state);
+    const legal = R.legal(state);
+    const humanTurn = !review && !over && state.turn === match.player;
+    const markers = new Map((report?.rows ?? []).slice(0, 5).map((row, i) => [row.move, i + 1]));
+    for (const [i, cell] of cells.entries()) {
+      const bit = R.bits[i];
+      const color = state.black & bit ? "black" : state.white & bit ? "white" : null;
+      const possible = humanTurn && hint && Boolean(legal & bit);
+      const rank = markers.get(i);
+      const candidate = Boolean(review && hint && rank);
+      const playable = humanTurn && !color;
+      cell.className = `cell${playable ? " playable" : ""}${possible ? " possible" : ""}${candidate ? " candidate" : ""}${lastMove === i ? " last" : ""}`;
+      cell.dataset.rank = rank ?? "";
+      cell.setAttribute("aria-label", [R.coord(i), color ? colorName(color) : "空き", possible ? "着手可能" : "", candidate ? "候補" + rank : ""].filter(Boolean).join("、"));
+      cell.setAttribute("aria-disabled", String(!playable));
+      cell.firstElementChild.hidden = !color;
+      cell.firstElementChild.className = `disc ${color ?? ""}`;
+    }
+    for (const color of ["black", "white"]) {
+      const score = $(color + "-score");
+      score.classList.toggle("active", !over && state.turn === color);
+      score.querySelector("strong").textContent = points[color];
+      $(color + "-role").textContent = game.player === color ? "あなた" : "AI";
+    }
+    $("status").textContent = over ? outcome(points, game.player)
+      : review ? `棋譜再生 · ${colorName(state.turn)}の手番`
+      : humanTurn ? `あなたの手番 · ${colorName(state.turn)}`
+      : matchError ? "AIの着手でエラーが発生しました" : `AIが思考中 · ${colorName(state.turn)}`;
+    const recentPass = prior?.move === null ? prior : !review && game.events[current - 2]?.move === null ? game.events[current - 2] : null;
+    $("pass").textContent = matchError && !review ? matchError
+      : fileNotice || (recentPass ? colorName(recentPass.color) + "は打てる場所がなくパスしました。"
+        : review && !over && !legal ? colorName(state.turn) + "はパスです。「次へ」で進みます。" : "");
+    $("hints").textContent = "ヒント " + (hint ? "ON" : "OFF");
+    $("hints").setAttribute("aria-pressed", String(hint));
+    $("move-count").textContent = game.events.filter(event => event.move !== null).length + "手";
+    $("replay").hidden = !review;
+    $("review").disabled = Boolean(review) || !match.events.length;
+    $("undo").disabled = Boolean(review) || !match.events.some(event => event.color === match.player && event.move !== null);
+    $("save").disabled = !game.events.length;
+    const retry = $("retry");
+    retry.hidden = Boolean(review) || !matchError;
+    if (review) {
+      $("position").value = cursor;
+      $("first").disabled = $("prev").disabled = cursor === 0;
+      $("last").disabled = $("next").disabled = cursor === review.events.length;
+      $("analyze").disabled = Boolean(job) || !legal;
+      renderReport(state, review.events[cursor]);
+    }
+  }
+  function renderReport(state, next) {
+    const info = $("analysis-info");
+    const container = $("analysis-results");
+    container.replaceChildren();
+    if (!report?.rows) {
+      info.textContent = report?.error ?? (job ? "すべての合法手を同じ深さで解析中…"
+        : !R.legal(state) ? "この局面に解析できる着手候補はありません。"
+        : "打った手と候補手を比べるには、打つ直前の局面を選びます。");
+      return;
+    }
+    info.textContent = `${colorName(state.turn)}の視点・${report.depth}手読み（上限12手・約4秒）。` +
+      (report.exact ? "全候補を終局まで探索。＋は勝ち、−は負け。" :
+        "＋は手番側有利、−は相手側有利。評価点は勝率や石差とは別の尺度です。");
+    const actual = report.rows.find(row => row.move === next?.move);
+    if (actual) {
+      const best = report.rows[0].value;
+      // Final and heuristic scores have different units, so compare only like units.
+      const bestIsFinal = Math.abs(best) >= 10000;
+      const actualIsFinal = Math.abs(actual.value) >= 10000;
+      if (!bestIsFinal && !actualIsFinal && !report.exact) {
+        info.textContent += ` 実戦手と最上位の差は ${best - actual.value} 点です。`;
+      }
+    }
+    const table = document.createElement("table");
+    const caption = table.createCaption();
+    caption.textContent = "すべての合法手";
+    const head = table.createTHead().insertRow();
+    for (const label of ["順位", "座標", "評価"]) {
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.textContent = label;
+      head.append(th);
+    }
+    const body = table.createTBody();
+    report.rows.forEach((row, i) => {
+      const tr = body.insertRow();
+      const played = row.move === next?.move;
+      if (played) tr.className = "actual";
+      tr.insertCell().textContent = i + 1;
+      tr.insertCell().textContent = R.coord(row.move) + (played ? " · 実戦" : "");
+      const sign = row.value > 0 ? "+" : row.value < 0 ? "−" : "";
+      tr.insertCell().textContent = Math.abs(row.value) >= 10000
+        ? `${sign}${Math.abs(row.value) - 10000} 石（終局）`
+        : row.value === 0 && report.exact ? "引き分け" : sign + Math.abs(row.value);
+    });
+    container.append(table);
+  }
+  function cancel() {
+    if (job) {
+      job.terminate();
+      job = null;
+    }
+  }
+  function startJob(state, options, success, failure) {
+    try {
+      const worker = new Worker(workerUrl);
+      job = worker;
+      const finish = (error, result) => {
+        if (job !== worker) return;
+        cancel();
+        if (error) failure(error);
+        else success(result);
+      };
+      worker.onmessage = ({data}) => finish(data.error, data.result);
+      worker.onerror = () => finish("探索エンジンを起動できませんでした。");
+      worker.onmessageerror = () => finish("探索結果を受け取れませんでした。");
+      worker.postMessage({state, options});
+    } catch {
+      cancel();
+      failure("探索エンジンを起動できませんでした。");
+    }
+  }
+  function failMatch(message) {
+    matchError = message;
+    render();
+  }
+  function scheduleAI() {
+    const state = stateOf(match);
+    if (review || job || matchError || R.ended(state) || state.turn === match.player) return;
+    const settings = R.levels[match.level];
+    startJob(state, settings, result => {
+      const choice = result?.rows?.[0]?.move;
+      if (!Number.isInteger(choice) || !R.bits[choice] || !(R.legal(state) & R.bits[choice])) {
+        failMatch("AIから合法手を受け取れませんでした。");
+        return;
+      }
+      append(choice);
+      settle();
+    }, failMatch);
+  }
+  function settle() {
+    resolvePass();
+    persistMatch();
+    render();
+    scheduleAI();
+  }
+  function play(move) {
+    const state = stateOf(match);
+    if (review || state.turn !== match.player || !(R.legal(state) & R.bits[move])) return;
+    fileNotice = "";
+    append(move);
+    settle();
+  }
+  function startMatch() {
+    fileTicket++;
+    cancel();
+    review = null;
+    report = null;
+    matchError = "";
+    fileNotice = "";
+    match = fresh(document.querySelector('input[name="color"]:checked').value, Number(levelSelect.value));
+    settle();
+  }
+  function enterReview(game, index) {
+    cancel();
+    review = game;
+    const positions = [option("初期盤面", 0)];
+    let moves = 0;
+    game.events.forEach((event, i) => {
+      if (event.move !== null) moves++;
+      positions.push(option(`${moves}手目後 · ${eventName(event)}`, i + 1));
+    });
+    $("position").replaceChildren(...positions);
+    jump(index);
+  }
+  function jump(index) {
+    cancel();
+    cursor = Math.max(0, Math.min(index, review.events.length));
+    report = null;
+    render();
+  }
+  $("hints").addEventListener("click", () => {
+    hint = !hint;
+    intoStorage(hintsKey, hint ? "on" : "off");
+    render();
+  });
+  levelSelect.addEventListener("change", describeLevel);
+  $("new").addEventListener("click", () => {
+    if (match.events.some(event => event.color === match.player && event.move !== null) && !R.ended(stateOf(match))) {
+      $("confirm").returnValue = "";
+      $("confirm").showModal();
+    } else startMatch();
+  });
+  $("confirm").addEventListener("close", () => {
+    if ($("confirm").returnValue === "start") startMatch();
+  });
+  $("retry").addEventListener("click", () => {
+    matchError = "";
+    render();
+    scheduleAI();
+  });
+  $("undo").addEventListener("click", () => {
+    const before = match.events.findLastIndex(event => event.color === match.player && event.move !== null);
+    if (before < 0) return;
+    cancel();
+    match.events.length = before;
+    match.states.length = before + 1;
+    matchError = "";
+    fileNotice = "";
+    settle();
+  });
+  $("review").addEventListener("click", () => {
+    fileNotice = "";
+    const first = match.events.findIndex(event => event.color === match.player && event.move !== null);
+    enterReview(match, Math.max(first, 0));
+  });
+  $("resume").addEventListener("click", () => {
+    fileTicket++;
+    cancel();
+    review = null;
+    report = null;
+    fileNotice = "";
+    render();
+    scheduleAI();
+  });
+  $("first").addEventListener("click", () => jump(0));
+  $("prev").addEventListener("click", () => jump(cursor - 1));
+  $("next").addEventListener("click", () => jump(cursor + 1));
+  $("last").addEventListener("click", () => jump(review.events.length));
+  $("position").addEventListener("change", event => jump(Number(event.target.value)));
+  $("analyze").addEventListener("click", () => {
+    report = null;
+    startJob(shown(), {depth: 12, time: 4000, all: true}, result => {
+      report = result;
+      render();
+    }, error => {
+      report = {error};
+      render();
+    });
+    render();
+  });
+  $("save").addEventListener("click", () => {
+    const game = review ?? match;
+    const data = R.record(game.player, game.level, game.events);
+    const json = JSON.stringify(data, null, 2) + "\n";
+    const url = URL.createObjectURL(new Blob([json], {type: "application/json"}));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `reversi-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  });
+  $("load").addEventListener("click", () => $("file").click());
+  $("file").addEventListener("change", async event => {
+    const file = event.target.files[0];
+    event.target.value = "";
+    if (!file) return;
+    const ticket = ++fileTicket;
+    try {
+      if (file.size > 32000) throw Error("棋譜ファイルのサイズが大きすぎます。");
+      const game = R.replay(JSON.parse(await file.text()));
+      if (ticket !== fileTicket) return;
+      fileNotice = "";
+      enterReview(game, 0);
+    } catch (error) {
+      if (ticket !== fileTicket) return;
+      fileNotice = error instanceof SyntaxError ? "棋譜のJSONを読み込めませんでした。" : error.message;
+      render();
+    }
+  });
+
+  syncSettings();
+  settle();
+})();</script>
+</body>
+</html>
