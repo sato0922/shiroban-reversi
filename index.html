@@ -37,7 +37,7 @@ main { max-width: 1050px; margin: auto; display: grid; grid-template-columns: mi
 .files, .ranks { display: grid; color: var(--muted); text-align: center; font: 12px ui-monospace, monospace; align-items: center; }
 .files { grid-area: 1 / 2; grid-template-columns: repeat(8, 1fr); }
 .ranks { grid-area: 2 / 1; grid-template-rows: repeat(8, 1fr); }
-.board { grid-area: 2 / 2; display: grid; grid-template: repeat(8, minmax(0, 1fr)) / repeat(8, minmax(0, 1fr)); gap: 1px; padding: 1px; aspect-ratio: 1; background: #142c23; border: 4px solid #49715c; border-radius: 9px; overflow: hidden; box-shadow: 0 9px 20px #06161080; }
+.board { grid-area: 2 / 2; display: grid; grid-template: repeat(8, minmax(0, 1fr)) / repeat(8, minmax(0, 1fr)); gap: 1px; padding: 1px; aspect-ratio: 1; container-type: inline-size; background: #142c23; border: 4px solid #49715c; border-radius: 9px; overflow: hidden; box-shadow: 0 9px 20px #06161080; }
 button, select { font: inherit; color: inherit; background: #20382e; border: 1px solid var(--line); border-radius: 8px; min-height: 44px; padding: 7px 12px; touch-action: manipulation; }
 button { cursor: pointer; }
 button:disabled { opacity: .45; cursor: default; }
@@ -49,9 +49,11 @@ button:focus-visible, select:focus-visible, input:focus-visible + span { outline
 .cell .disc { width: 78%; pointer-events: none; }
 .cell:focus-visible { outline-offset: -3px; z-index: 1; }
 .cell.last::after { content: ""; position: absolute; width: 12%; aspect-ratio: 1; border-radius: 50%; background: #cf8c38; pointer-events: none; }
-.move-value { display: grid; place-items: center; min-width: 63%; padding: 2px 3px; border-radius: 4px; color: #192920; background: #f0e3bf; font: 700 clamp(.66rem, 2.5vw, 1.03rem)/1.2 system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
-.move-value.positive { background: #cdecc6; }
-.move-value.negative { background: #ffd5ce; color: #582d27; }
+.move-value { position: absolute; inset: 1px; display: grid; place-items: center; border-radius: 2px; font: 800 clamp(.8rem, 4.7cqw, 1.95rem)/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+.move-value.compact { font-size: clamp(.64rem, 3.65cqw, 1.55rem); }
+.grade-good { background: #90e6aa; color: #10331c; }
+.grade-ordinary { background: #ffdc83; color: #372608; }
+.grade-poor { background: #f19a8f; color: #461913; }
 .board-toolbar { display: flex; align-items: flex-start; gap: 8px; justify-content: space-between; margin: 13px 0 0 20px; }
 .status-wrap p { margin: 0; }
 #status { font-weight: 700; }
@@ -59,6 +61,8 @@ button:focus-visible, select:focus-visible, input:focus-visible + span { outline
 .hint { white-space: nowrap; min-width: 109px; }
 .hint[aria-pressed=true] { color: #1e241c; background: var(--accent); border-color: var(--accent); }
 .hint-detail { margin: 5px 0 0 20px; }
+.hint-legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 5px 0 0 20px; padding: 0; list-style: none; }
+.hint-legend li { border-radius: 4px; padding: 2px 8px; font-size: .75rem; font-weight: 700; }
 .retry { margin: 8px 0 0 20px; }
 .sidebar { display: grid; gap: 14px; }
 .panel { padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
@@ -117,6 +121,11 @@ dialog::backdrop { background: #080e0bb0; }
       <button id="hints" class="hint" type="button" aria-pressed="true">ヒント ON</button>
     </div>
     <p id="hint-detail" class="muted hint-detail" aria-live="polite" hidden></p>
+    <ul id="hint-legend" class="hint-legend" aria-label="候補手の色" hidden>
+      <li class="grade-good">良い手</li>
+      <li class="grade-ordinary">普通</li>
+      <li class="grade-poor">悪い手</li>
+    </ul>
     <button id="retry" class="retry" type="button" hidden>AIの着手を再試行</button>
   </section>
   <aside class="sidebar">
@@ -538,6 +547,15 @@ globalThis.Reversi = (() => {
     if (value === 0 && exact) return "0石";
     return sign + Math.abs(evaluationPoints(value)).toFixed(1);
   }
+  const gradeNames = {good: "良い手", ordinary: "普通", poor: "悪い手"};
+  function moveGrade(value, best, exact) {
+    const stoneScore = exact || Math.abs(value) >= 10000;
+    const bestStoneScore = exact || Math.abs(best) >= 10000;
+    if (stoneScore !== bestStoneScore) return "poor";
+    const gap = best - value;
+    if (gap <= (stoneScore ? 2 : 6)) return "good";
+    return gap <= (stoneScore ? 6 : 20) ? "ordinary" : "poor";
+  }
   function render() {
     const game = review ?? match;
     const state = shown();
@@ -550,6 +568,7 @@ globalThis.Reversi = (() => {
     const humanTurn = !review && !over && state.turn === match.player;
     const evaluation = review ? report : state === hintedState ? hintResult : null;
     const ratings = new Map((hint ? evaluation?.rows ?? [] : []).map(row => [row.move, row.value]));
+    const bestRating = evaluation?.rows?.[0]?.value;
     for (const [i, cell] of cells.entries()) {
       const bit = R.bits[i];
       const color = state.black & bit ? "black" : state.white & bit ? "white" : null;
@@ -558,15 +577,16 @@ globalThis.Reversi = (() => {
       const rated = rating !== undefined;
       const playable = humanTurn && !color;
       const label = rated ? scoreLabel(rating, evaluation.exact) : "";
+      const grade = rated ? moveGrade(rating, bestRating, evaluation.exact) : "";
       cell.className = `cell${playable ? " playable" : ""}${possible ? " possible" : ""}${rated ? " rated" : ""}${lastMove === i ? " last" : ""}`;
-      cell.setAttribute("aria-label", [R.coord(i), color ? colorName(color) : "空き", possible ? "着手可能" : "", rated ? "評価 " + label : ""].filter(Boolean).join("、"));
+      cell.setAttribute("aria-label", [R.coord(i), color ? colorName(color) : "空き", possible ? "着手可能" : "", rated ? gradeNames[grade] + "、評価 " + label : ""].filter(Boolean).join("、"));
       cell.setAttribute("aria-disabled", String(!playable));
       cell.firstElementChild.hidden = !color;
       cell.firstElementChild.className = `disc ${color ?? ""}`;
       const value = cell.lastElementChild;
       value.hidden = !rated;
       value.textContent = label;
-      value.className = "move-value " + (rating > 0 ? "positive" : rating < 0 ? "negative" : "even");
+      value.className = "move-value" + (rated ? " grade-" + grade : "") + (label.length >= 5 ? " compact" : "");
     }
     for (const color of ["black", "white"]) {
       const score = $(color + "-score");
@@ -586,7 +606,8 @@ globalThis.Reversi = (() => {
     $("hints").setAttribute("aria-pressed", String(hint));
     const hintDetail = $("hint-detail");
     hintDetail.hidden = !hint || (!humanTurn && !(review && evaluation?.rows));
-    hintDetail.textContent = evaluation?.rows ? `${colorName(state.turn)}視点 · ＋は有利、−は不利 · ${evaluation.depth}手読み（石は終局時の差）`
+    $("hint-legend").hidden = !ratings.size;
+    hintDetail.textContent = evaluation?.rows ? `${colorName(state.turn)}視点 · 数字は大きいほど有利 · ${evaluation.depth}手読み。色は候補内の比較です。`
       : evaluation?.error ? "この局面の評価を表示できませんでした。" : "候補を評価中…";
     $("move-count").textContent = game.events.filter(event => event.move !== null).length + "手";
     $("replay").hidden = !review;
