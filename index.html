@@ -204,12 +204,39 @@ globalThis.Reversi = (() => {
     x => ((x & notA) << 7n) & full, x => (x & notH) >> 7n
   ];
   const indexByBit = new Map(bits.map((bit, index) => [bit, index]));
-  const levels = Array.from({length: 12}, (_, i) => ({
+  const practiceSearch = {depth: 5, time: 350};
+  const establishedLevels = Array.from({length: 12}, (_, i) => ({
     name: (i < 3 ? "中級" : i < 7 ? "上級" : "強豪") + " " + (i < 3 ? i + 1 : i < 7 ? i - 2 : i - 6),
     depth: i + 5,
-    time: [160, 250, 380, 550, 750, 1000, 1350, 1800, 2400, 3200, 4300, 5800][i]
+    time: [350, 450, 550, 700, 900, 1200, 1550, 2000, 2600, 3400, 4500, 5800][i],
+    gap: [[6, 28], [4, 22], [2, 16], [0, 12], [0, 10], [0, 8], [0, 6], [0, 5], [0, 4], [0, 3], [0, 2], [0, 1]][i]
   }));
-  const defaultLevel = 4;
+  // Append new IDs so existing save files keep their original difficulty.
+  const levels = establishedLevels.concat([[30, Infinity], [20, 70], [12, 40]].map((gap, index) => ({
+    ...practiceSearch, name: "初心者 " + (index + 1), gap
+  })));
+  const levelOrder = [...levels.keys()].slice(establishedLevels.length).concat([...establishedLevels.keys()]);
+  const defaultLevel = establishedLevels.length + 1;
+  const evaluationScale = 20;
+  function chooseMove(rows, [min, max], random = Math.random) {
+    if (!rows.length) return null;
+    const best = rows[0].value;
+    let nearest = Infinity;
+    let pool = [];
+    for (const row of rows) {
+      // Compare margins within the same solved outcome in stones.
+      const sameSolvedOutcome = Math.abs(best) >= 10000 && Math.abs(row.value) >= 10000 &&
+        Math.sign(best) === Math.sign(row.value);
+      const gap = (best - row.value) * (sameSolvedOutcome ? evaluationScale : 1);
+      const distance = Math.max(min - gap, gap - max, 0);
+      if (distance < nearest) {
+        nearest = distance;
+        pool = [];
+      }
+      if (distance === nearest) pool.push(row.move);
+    }
+    return pool[Math.floor(random() * pool.length)];
+  }
   const initial = () => ({black: bits[28] | bits[35], white: bits[27] | bits[36], turn: "black"});
   const other = color => color === "black" ? "white" : "black";
   const coord = index => "ABCDEFGH"[index % 8] + (Math.floor(index / 8) + 1);
@@ -428,7 +455,8 @@ globalThis.Reversi = (() => {
     if (!completed) throw Error("探索を完了できませんでした。もう一度お試しください。");
     return {rows: options.all ? rows : rows.slice(0, 1), depth: completed, exact: completed === empty};
   }
-  return {bits, levels, defaultLevel, initial, coord, parseCoord, indices, legal, ended, other, score, advance, record, replay, search};
+  return {bits, levels, levelOrder, defaultLevel, practiceSearch, evaluationScale, chooseMove,
+    initial, coord, parseCoord, indices, legal, ended, other, score, advance, record, replay, search};
 })();</script>
 <script id="worker-source" type="text/plain">self.onmessage = ({data}) => {
   try {
@@ -518,7 +546,7 @@ globalThis.Reversi = (() => {
     rank.textContent = i + 1;
     $("rank-labels").append(rank);
   }
-  R.levels.forEach((level, i) => levelSelect.add(option(level.name, i)));
+  R.levelOrder.forEach(i => levelSelect.add(option(R.levels[i].name, i)));
   function syncSettings() {
     document.querySelector(`input[name="color"][value="${match.player}"]`).checked = true;
     levelSelect.value = match.level;
@@ -526,7 +554,9 @@ globalThis.Reversi = (() => {
   }
   function describeLevel() {
     const level = R.levels[Number(levelSelect.value)];
-    $("level-detail").textContent = `次の対局に適用 · 最大 ${level.depth} 手読み · 1手 約 ${level.time / 1000} 秒まで`;
+    const [min, max] = level.gap.map(evaluationPoints);
+    const range = max === Infinity ? `${min}点以上` : `${min}〜${max}点`;
+    $("level-detail").textContent = `次の対局 · 最善手との差 ${range}から抽選`;
   }
   function persistMatch() {
     intoStorage(savedKey, JSON.stringify(R.record(match.player, match.level, match.events)));
@@ -549,7 +579,7 @@ globalThis.Reversi = (() => {
     const winner = black > white ? "black" : "white";
     return `終局 · ${colorName(winner)}の勝ち（${winner === player ? "あなた" : "AI"}）`;
   }
-  const evaluationPoints = value => value / 20;
+  const evaluationPoints = value => value / R.evaluationScale;
   function scoreLabel(value, exact = false) {
     const sign = value > 0 ? "+" : value < 0 ? "−" : "";
     if (Math.abs(value) >= 10000) return sign + (Math.abs(value) - 10000) + "石";
@@ -732,7 +762,7 @@ globalThis.Reversi = (() => {
     hintedState = state;
     hintResult = null;
     if (state.turn !== match.player || !R.legal(state)) return;
-    hintJob = startSearch(state, {depth: 5, time: 350, all: true}, (error, result, worker) => {
+    hintJob = startSearch(state, {...R.practiceSearch, all: true}, (error, result, worker) => {
       if (hintJob !== worker || hintedState !== state) return;
       hintJob = null;
       hintResult = error ? {error} : result;
@@ -747,8 +777,8 @@ globalThis.Reversi = (() => {
     const state = stateOf(match);
     if (review || job || matchError || R.ended(state) || state.turn === match.player) return;
     const settings = R.levels[match.level];
-    startJob(state, settings, result => {
-      const choice = result?.rows?.[0]?.move;
+    startJob(state, {...settings, all: true}, result => {
+      const choice = R.chooseMove(result?.rows ?? [], settings.gap);
       if (!Number.isInteger(choice) || !R.bits[choice] || !(R.legal(state) & R.bits[choice])) {
         failMatch("AIから合法手を受け取れませんでした。");
         return;
